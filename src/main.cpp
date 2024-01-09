@@ -7,7 +7,7 @@
 #define NUMBER_OF_PAIR_POLES 10
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES);
+BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES,/**/ 0.39, 65, 0.00018*/);//0.39, 65, 0.00018
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
 LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f / 7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
 
@@ -23,6 +23,8 @@ void doC() { sensor.handleC(); }
 // instantiate the commander
 Commander command = Commander(Serial);
 void doTarget(char *cmd) { command.motion(&motor, cmd); }
+
+
 
 void setup()
 {
@@ -57,21 +59,21 @@ void setup()
   // motor.torque_controller = TorqueControlType::foc_current;
   motor.controller = MotionControlType::velocity; // velocity_openloop;//torque
 
-  /*
+
     motor.voltage_limit = 3; // [V]
     motor.PID_velocity.P = 0.3;
     motor.PID_velocity.I = 2; // 1.5;
     motor.LPF_velocity.Tf = 0.1;
-  */
+
 
   // Coeffs pour TorqueControlType::foc_current
-  motor.torque_controller = TorqueControlType::foc_current;
-  motor.voltage_limit = 18; // [V]
-  motor.PID_velocity.P = 0.4;
-  motor.PID_velocity.I = 0.0;//0.1; // 1.5;
-  motor.LPF_velocity.Tf = 0.05;
+  /*motor.torque_controller = TorqueControlType::foc_current;
+  motor.voltage_limit = 3; // [V]
+  motor.PID_velocity.P = 0.03;
+  motor.PID_velocity.I = 0.1;//0.1; // 1.5;
+  motor.LPF_velocity.Tf = 0.05;*/
 
-  // motor.PID_velocity.output_ramp = 100;// en A par seconde
+  //motor.PID_velocity.output_ramp = 100;// en A par seconde
 
   /*motor.PID_current_q.P = 5;
   motor.PID_current_q.I= 300;
@@ -82,13 +84,14 @@ void setup()
 
   //  comment out if not needed
   motor.useMonitoring(Serial);
-  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
+  motor.monitor_variables = _MON_TARGET | _MON_CURR_Q; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
 
-  motor.sensor_direction = Direction::CCW; // CW or CCW
+  motor.sensor_direction = Direction::CW; // CW or CCW
 
-  // motor.motion_downsample = 5; // - times (default 0 - disabled)
+  //motor.motion_downsample = 10; // - times (default 0 - disabled)
 
   // initialize motor
+  motor.current_limit = 8;
   motor.init();
 
   // It is very important that the the current sensing init function is called after the BLDCDriver init function is called
@@ -101,12 +104,13 @@ void setup()
 
   // align encoder and start FOC
   motor.initFOC();
+   motor.PID_velocity.limit = 8;
+
   command.add('T', doTarget, "target angle");
 
   _delay(1000);
 
-  motor.PID_velocity.limit = 10;
-  motor.current_limit = 10;
+
 }
 
 uint32_t last_time = micros();
@@ -117,7 +121,7 @@ void loop()
 
   // Motion control function
   motor.move();
-  sensor.update();
+  //sensor.update();
   // Serial.println(sensor.getVelocity());
   //  currentSense.update();
   //   display the angle and the angular velocity to the terminal
