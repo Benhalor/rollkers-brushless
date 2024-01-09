@@ -7,7 +7,7 @@
 #define NUMBER_OF_PAIR_POLES 10
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES,/**/ 0.39, 65, 0.00018*/);//0.39, 65, 0.00018
+BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES /*, 0.39, 65, 0.00018*/); // 0.39, 65, 0.00018
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
 LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f / 7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
 
@@ -23,8 +23,6 @@ void doC() { sensor.handleC(); }
 // instantiate the commander
 Commander command = Commander(Serial);
 void doTarget(char *cmd) { command.motion(&motor, cmd); }
-
-
 
 void setup()
 {
@@ -60,10 +58,11 @@ void setup()
   motor.controller = MotionControlType::velocity; // velocity_openloop;//torque
 
 
-    motor.voltage_limit = 3; // [V]
-    motor.PID_velocity.P = 0.3;
-    motor.PID_velocity.I = 2; // 1.5;
-    motor.LPF_velocity.Tf = 0.1;
+      motor.voltage_limit = 4; // [V]
+      motor.PID_velocity.P = 0.3;
+      motor.PID_velocity.I = 2; // 1.5;
+      motor.LPF_velocity.Tf = 0.1;
+      motor.PID_velocity.output_ramp = 30;
 
 
   // Coeffs pour TorqueControlType::foc_current
@@ -73,22 +72,23 @@ void setup()
   motor.PID_velocity.I = 0.1;//0.1; // 1.5;
   motor.LPF_velocity.Tf = 0.05;*/
 
-  //motor.PID_velocity.output_ramp = 100;// en A par seconde
-
-  /*motor.PID_current_q.P = 5;
-  motor.PID_current_q.I= 300;
-  motor.PID_current_d.P= 5;
-  motor.PID_current_d.I = 300;
-  motor.LPF_current_q.Tf = 0.01;
-  motor.LPF_current_d.Tf = 0.01;*/
+  // motor.PID_velocity.output_ramp = 100;// en A par seconde
+  /*motor.torque_controller = TorqueControlType::foc_current;
+  motor.voltage_limit = 3;
+  motor.PID_current_q.P = 0.3;
+  motor.PID_current_q.I = 0.1;
+  motor.PID_current_d.P = 0.3;
+  motor.PID_current_d.I = 0.1;*/
+  //motor.LPF_current_q.Tf = 0.01;
+  //motor.LPF_current_d.Tf = 0.01;
 
   //  comment out if not needed
   motor.useMonitoring(Serial);
-  motor.monitor_variables = _MON_TARGET | _MON_CURR_Q; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
+  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
 
   motor.sensor_direction = Direction::CW; // CW or CCW
 
-  //motor.motion_downsample = 10; // - times (default 0 - disabled)
+  // motor.motion_downsample = 10; // - times (default 0 - disabled)
 
   // initialize motor
   motor.current_limit = 8;
@@ -104,13 +104,11 @@ void setup()
 
   // align encoder and start FOC
   motor.initFOC();
-   motor.PID_velocity.limit = 8;
+  motor.PID_velocity.limit = 8;
 
   command.add('T', doTarget, "target angle");
 
   _delay(1000);
-
-
 }
 
 uint32_t last_time = micros();
@@ -121,32 +119,33 @@ void loop()
 
   // Motion control function
   motor.move();
-  //sensor.update();
-  // Serial.println(sensor.getVelocity());
-  //  currentSense.update();
-  //   display the angle and the angular velocity to the terminal
-  //  Serial.println(sensor.getAngle());
-  //  delay(100);
+  // sensor.update();
+  //  Serial.println(sensor.getVelocity());
+  //   currentSense.update();
+  //    display the angle and the angular velocity to the terminal
+  //   Serial.println(sensor.getAngle());
+  //   delay(100);
 
   // function intended to be used with serial plotter to monitor motor variables
   // significantly slowing the execution down!!!!
 
-
-  if(micros()-last_time > 1000){
+  if (micros() - last_time > 1000)
+  {
     last_time = micros();
-    motor.monitor();
+     motor.monitor();
+
+    // user communication
+    /*PhaseCurrent_s currents = currentSense.getPhaseCurrents();
+    float current_magnitude = currentSense.getDCCurrent();
+
+    Serial.print(currents.a * 1000); // milli Amps
+    Serial.print("\t");
+    Serial.print(currents.b * 1000); // milli Amps
+    Serial.print("\t");
+    Serial.print(currents.c * 1000); // milli Amps
+    Serial.print("\t");
+    Serial.println(current_magnitude * 1000); // milli Amps*/
   }
 
-  // user communication
-  /*PhaseCurrent_s currents = currentSense.getPhaseCurrents();
-  float current_magnitude = currentSense.getDCCurrent();
-
-  Serial.print(currents.a * 1000); // milli Amps
-  Serial.print("\t");
-  Serial.print(currents.b * 1000); // milli Amps
-  Serial.print("\t");
-  Serial.print(currents.c * 1000); // milli Amps
-  Serial.print("\t");
-  Serial.println(current_magnitude * 1000); // milli Amps*/
   command.run();
 }
