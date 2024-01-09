@@ -27,7 +27,7 @@ void doTarget(char *cmd) { command.motion(&motor, cmd); }
 void setup()
 {
   // use monitoring with serial
-  Serial.begin(115200);
+  Serial.begin(1000000);
 
   // initialize sensor hardware
   sensor.init();
@@ -50,41 +50,39 @@ void setup()
   motor.voltage_sensor_align = 3;
   // index search velocity [rad/s]
   motor.velocity_index_search = 3;
-  motor.voltage_limit = 2;  // [V]
-  motor.velocity_limit = 3; // [rad/s]
-  // motor.current_limit = 0.02;  // Amps - default 0.2Amps
+
+  motor.velocity_limit = 50; // [rad/s]
 
   // set motion control loop to be used
-  motor.controller = MotionControlType::velocity; // velocity_openloop;
+  // motor.torque_controller = TorqueControlType::foc_current;
+  motor.controller = MotionControlType::velocity; // velocity_openloop;//torque
 
-  // contoller configuration
-  // default parameters in defaults.h
+  /*
+    motor.voltage_limit = 3; // [V]
+    motor.PID_velocity.P = 0.3;
+    motor.PID_velocity.I = 2; // 1.5;
+    motor.LPF_velocity.Tf = 0.1;
+  */
 
-  // velocity PI controller parameters
-  /*motor.PID_velocity.P = 0.2;
-  motor.PID_velocity.I = 20;
-  // default voltage_power_supply
-  motor.voltage_limit = 2;
-  // jerk control using voltage voltage ramp
-  // default value is 300 volts per sec  ~ 0.3V per millisecond
-  motor.PID_velocity.output_ramp = 1000;
+  // Coeffs pour TorqueControlType::foc_current
+  motor.torque_controller = TorqueControlType::foc_current;
+  motor.voltage_limit = 18; // [V]
+  motor.PID_velocity.P = 0.4;
+  motor.PID_velocity.I = 0.0;//0.1; // 1.5;
+  motor.LPF_velocity.Tf = 0.05;
 
-  // velocity low pass filtering time constant
-  motor.LPF_velocity.Tf = 0.01;
+  // motor.PID_velocity.output_ramp = 100;// en A par seconde
 
-  // angle P controller
-  motor.P_angle.P = 20;
-  //  maximal velocity of the position control
-  motor.velocity_limit = 4;*/
+  /*motor.PID_current_q.P = 5;
+  motor.PID_current_q.I= 300;
+  motor.PID_current_d.P= 5;
+  motor.PID_current_d.I = 300;
+  motor.LPF_current_q.Tf = 0.01;
+  motor.LPF_current_d.Tf = 0.01;*/
 
-  motor.PID_velocity.P = 0.3;
-  motor.PID_velocity.I = 2;
-  motor.LPF_velocity.Tf = 0.1;
-
-  // motor.PI_s.voltage_limit=xx;
   //  comment out if not needed
   motor.useMonitoring(Serial);
-  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE
+  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
 
   motor.sensor_direction = Direction::CCW; // CW or CCW
 
@@ -103,15 +101,15 @@ void setup()
 
   // align encoder and start FOC
   motor.initFOC();
-  // add target command T
   command.add('T', doTarget, "target angle");
 
-  Serial.println(F("Motor ready."));
-  Serial.println(F("Set the target angle using serial terminal:"));
   _delay(1000);
 
+  motor.PID_velocity.limit = 10;
+  motor.current_limit = 10;
 }
 
+uint32_t last_time = micros();
 void loop()
 {
   // main FOC algorithm function
@@ -129,7 +127,11 @@ void loop()
   // function intended to be used with serial plotter to monitor motor variables
   // significantly slowing the execution down!!!!
 
-  motor.monitor();
+
+  if(micros()-last_time > 1000){
+    last_time = micros();
+    motor.monitor();
+  }
 
   // user communication
   /*PhaseCurrent_s currents = currentSense.getPhaseCurrents();
