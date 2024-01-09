@@ -6,6 +6,11 @@
 #include <SimpleFOC.h>
 #define NUMBER_OF_PAIR_POLES 10
 
+#define MIN_SPEED 0.0
+#define MAX_SPEED 40.0
+#define MIN_PPM_DURATION 1080.0
+#define MAX_PPM_DURATION 1860.0
+
 // Motor instance
 BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES /*, 0.39, 65, 0.00018*/); // 0.39, 65, 0.00018
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
@@ -19,6 +24,34 @@ HallSensor sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, NUMBER_OF_PAIR_POLES);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
+
+uint32_t durationPpm = 0;
+uint32_t lastPpmRising = micros();
+float speedRadianParSeconde = 0.0;
+
+void escEdge()
+{
+  if (digitalRead(A_PWM))
+  {
+    lastPpmRising = micros();
+  }
+  else
+  {
+    durationPpm = micros() - lastPpmRising;
+    if (durationPpm < MIN_PPM_DURATION)
+    {
+      speedRadianParSeconde = MIN_SPEED;
+    }
+    else if (durationPpm > MAX_PPM_DURATION)
+    {
+      speedRadianParSeconde = MAX_SPEED;
+    }
+    else
+    {
+      speedRadianParSeconde = ((float)durationPpm-MIN_PPM_DURATION)*(MAX_SPEED-MIN_SPEED)/(MAX_PPM_DURATION-MIN_PPM_DURATION);
+    }
+  }
+}
 
 // instantiate the commander
 Commander command = Commander(Serial);
@@ -56,14 +89,13 @@ void setup()
   // set motion control loop to be used
   // motor.torque_controller = TorqueControlType::foc_current;
   motor.controller = MotionControlType::velocity; // velocity_openloop;//torque
+                                                  // motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
 
-
-      motor.voltage_limit = 4; // [V]
-      motor.PID_velocity.P = 0.3;
-      motor.PID_velocity.I = 2; // 1.5;
-      motor.LPF_velocity.Tf = 0.1;
-      motor.PID_velocity.output_ramp = 30;
-
+  motor.voltage_limit = 4; // [V]
+  motor.PID_velocity.P = 0.3;
+  motor.PID_velocity.I = 2; // 1.5;
+  motor.LPF_velocity.Tf = 0.1;
+  motor.PID_velocity.output_ramp = 30;
 
   // Coeffs pour TorqueControlType::foc_current
   /*motor.torque_controller = TorqueControlType::foc_current;
@@ -79,8 +111,8 @@ void setup()
   motor.PID_current_q.I = 0.1;
   motor.PID_current_d.P = 0.3;
   motor.PID_current_d.I = 0.1;*/
-  //motor.LPF_current_q.Tf = 0.01;
-  //motor.LPF_current_d.Tf = 0.01;
+  // motor.LPF_current_q.Tf = 0.01;
+  // motor.LPF_current_d.Tf = 0.01;
 
   //  comment out if not needed
   motor.useMonitoring(Serial);
@@ -109,16 +141,26 @@ void setup()
   command.add('T', doTarget, "target angle");
 
   _delay(1000);
+  pinMode(A_PWM, INPUT);
+  attachInterrupt(digitalPinToInterrupt(A_PWM), escEdge, CHANGE);
+  // attachInterrupt(digitalPinToInterrupt(A_PWM), escFalling, FALLING);
+
+  // Par sécurité, on attend que la consigne soit à 0 au démarrage
+  while(speedRadianParSeconde>0.001){
+    delay(1);
+  }
 }
 
 uint32_t last_time = micros();
 void loop()
 {
-  // main FOC algorithm function
-  motor.loopFOC();
+  //Serial.println(speedRadianParSeconde);
+  //delay(100);
+  //  main FOC algorithm function
+  /*
 
   // Motion control function
-  motor.move();
+
   // sensor.update();
   //  Serial.println(sensor.getVelocity());
   //   currentSense.update();
@@ -128,14 +170,14 @@ void loop()
 
   // function intended to be used with serial plotter to monitor motor variables
   // significantly slowing the execution down!!!!
-
-  if (micros() - last_time > 1000)
+*/
+  /*if (micros() - last_time > 1000)
   {
     last_time = micros();
      motor.monitor();
 
     // user communication
-    /*PhaseCurrent_s currents = currentSense.getPhaseCurrents();
+    PhaseCurrent_s currents = currentSense.getPhaseCurrents();
     float current_magnitude = currentSense.getDCCurrent();
 
     Serial.print(currents.a * 1000); // milli Amps
@@ -144,8 +186,10 @@ void loop()
     Serial.print("\t");
     Serial.print(currents.c * 1000); // milli Amps
     Serial.print("\t");
-    Serial.println(current_magnitude * 1000); // milli Amps*/
-  }
+    Serial.println(current_magnitude * 1000); // milli Amps
+  }*/
 
   command.run();
+  motor.loopFOC();
+  motor.move(speedRadianParSeconde);
 }
