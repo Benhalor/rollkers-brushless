@@ -10,6 +10,7 @@
 #define MAX_SPEED 40.0
 #define MIN_PPM_DURATION 1080.0
 #define MAX_PPM_DURATION 1860.0
+#define SAFETY_MAX_PPM_DURATION 2000.0
 
 // Motor instance
 BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES /*, 0.39, 65, 0.00018*/); // 0.39, 65, 0.00018
@@ -39,6 +40,10 @@ void escEdge()
   {
     durationPpm = micros() - lastPpmRising;
     if (durationPpm < MIN_PPM_DURATION)
+    {
+      speedRadianParSeconde = MIN_SPEED;
+    }
+    else if (durationPpm > SAFETY_MAX_PPM_DURATION)
     {
       speedRadianParSeconde = MIN_SPEED;
     }
@@ -146,7 +151,7 @@ void setup()
   // attachInterrupt(digitalPinToInterrupt(A_PWM), escFalling, FALLING);
 
   // Par sécurité, on attend que la consigne soit à 0 au démarrage
-  while(speedRadianParSeconde>0.001){
+  while(speedRadianParSeconde>0.001 || speedRadianParSeconde<-0.001){
     delay(1);
   }
 }
@@ -188,6 +193,12 @@ void loop()
     Serial.print("\t");
     Serial.println(current_magnitude * 1000); // milli Amps
   }*/
+
+
+  // Watchdog sur la commande
+  if(micros()-lastPpmRising>200000){
+    speedRadianParSeconde = 0.0;
+  }
 
   command.run();
   motor.loopFOC();
