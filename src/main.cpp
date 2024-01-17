@@ -6,11 +6,13 @@
 #include <SimpleFOC.h>
 #define NUMBER_OF_PAIR_POLES 10
 
-#define MIN_SPEED 0.0
-#define MAX_SPEED 40.0
+#define WHEEL_DIAMETER_M 0.083
+#define MAX_SPEED_KMPH 7
+#define MIN_SPEED_RADPS 0.0
+#define MAX_SPEED_RADPS 3.14159 * (MAX_SPEED_KMPH / 3.6) / WHEEL_DIAMETER_M
 #define MIN_PPM_DURATION 1080.0
 #define MAX_PPM_DURATION 1860.0
-#define SAFETY_MAX_PPM_DURATION 2000.0
+#define SAFETY_MAX_PPM_DURATION 3000.0
 
 // Motor instance
 BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES /*, 0.39, 65, 0.00018*/); // 0.39, 65, 0.00018
@@ -39,22 +41,6 @@ void escEdge()
   else
   {
     durationPpm = micros() - lastPpmRising;
-    if (durationPpm < MIN_PPM_DURATION)
-    {
-      speedRadianParSeconde = MIN_SPEED;
-    }
-    else if (durationPpm > SAFETY_MAX_PPM_DURATION)
-    {
-      speedRadianParSeconde = MIN_SPEED;
-    }
-    else if (durationPpm > MAX_PPM_DURATION)
-    {
-      speedRadianParSeconde = MAX_SPEED;
-    }
-    else
-    {
-      speedRadianParSeconde = ((float)durationPpm-MIN_PPM_DURATION)*(MAX_SPEED-MIN_SPEED)/(MAX_PPM_DURATION-MIN_PPM_DURATION);
-    }
   }
 }
 
@@ -95,12 +81,14 @@ void setup()
   // motor.torque_controller = TorqueControlType::foc_current;
   motor.controller = MotionControlType::velocity; // velocity_openloop;//torque
                                                   // motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
+  //motor.controller =  MotionControlType::angle;
 
   motor.voltage_limit = 4; // [V]
   motor.PID_velocity.P = 0.3;
   motor.PID_velocity.I = 2; // 1.5;
   motor.LPF_velocity.Tf = 0.1;
   motor.PID_velocity.output_ramp = 30;
+  motor.P_angle.P = 2;
 
   // Coeffs pour TorqueControlType::foc_current
   /*motor.torque_controller = TorqueControlType::foc_current;
@@ -151,7 +139,8 @@ void setup()
   // attachInterrupt(digitalPinToInterrupt(A_PWM), escFalling, FALLING);
 
   // Par sécurité, on attend que la consigne soit à 0 au démarrage
-  while(speedRadianParSeconde>0.001 || speedRadianParSeconde<-0.001){
+  while (speedRadianParSeconde > 0.001 || speedRadianParSeconde < -0.001)
+  {
     delay(1);
   }
 }
@@ -159,9 +148,9 @@ void setup()
 uint32_t last_time = micros();
 void loop()
 {
-  //Serial.println(speedRadianParSeconde);
-  //delay(100);
-  //  main FOC algorithm function
+  // Serial.println(speedRadianParSeconde);
+  // delay(100);
+  //   main FOC algorithm function
   /*
 
   // Motion control function
@@ -175,32 +164,43 @@ void loop()
 
   // function intended to be used with serial plotter to monitor motor variables
   // significantly slowing the execution down!!!!
-*/
-  /*if (micros() - last_time > 1000)
-  {
-    last_time = micros();
-     motor.monitor();
+*/ /*
+   if (micros() - last_time > 1000)
+   {
+     last_time = micros();
+      motor.monitor();
 
-    // user communication
-    PhaseCurrent_s currents = currentSense.getPhaseCurrents();
-    float current_magnitude = currentSense.getDCCurrent();
 
-    Serial.print(currents.a * 1000); // milli Amps
-    Serial.print("\t");
-    Serial.print(currents.b * 1000); // milli Amps
-    Serial.print("\t");
-    Serial.print(currents.c * 1000); // milli Amps
-    Serial.print("\t");
-    Serial.println(current_magnitude * 1000); // milli Amps
-  }*/
-
+   }*/
 
   // Watchdog sur la commande
-  if(micros()-lastPpmRising>200000){
+  uint32_t micr = micros();
+  uint32_t test = micr - lastPpmRising;
+  if (micr> lastPpmRising && (test) > 200000)
+  {
     speedRadianParSeconde = 0.0;
   }
+  //Serial.println(micros() - lastPpmRising);
 
   command.run();
   motor.loopFOC();
+
+  if (durationPpm < MIN_PPM_DURATION)
+  {
+    speedRadianParSeconde = MIN_SPEED_RADPS;
+  }
+  else if (durationPpm > SAFETY_MAX_PPM_DURATION)
+  {
+    speedRadianParSeconde = MIN_SPEED_RADPS;
+  }
+  else if (durationPpm > MAX_PPM_DURATION)
+  {
+    speedRadianParSeconde = MAX_SPEED_RADPS;
+  }
+  else
+  {
+    speedRadianParSeconde = ((float)durationPpm - MIN_PPM_DURATION) * (MAX_SPEED_RADPS - MIN_SPEED_RADPS) / (MAX_PPM_DURATION - MIN_PPM_DURATION);
+  }
+
   motor.move(-speedRadianParSeconde);
 }
