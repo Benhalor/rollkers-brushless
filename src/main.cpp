@@ -71,7 +71,7 @@ void setup()
   currentSense.linkDriver(&driver);
 
   // aligning voltage [V]
-  motor.voltage_sensor_align = 3;
+  motor.voltage_sensor_align = 2;
   // index search velocity [rad/s]
   motor.velocity_index_search = 3;
 
