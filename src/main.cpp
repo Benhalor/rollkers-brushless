@@ -202,5 +202,5 @@ void loop()
 
   command.run();
   motor.loopFOC();
-  motor.move(speedRadianParSeconde);
+  motor.move(-speedRadianParSeconde);
 }
