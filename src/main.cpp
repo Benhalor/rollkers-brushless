@@ -9,7 +9,7 @@
 #define WHEEL_DIAMETER_M 0.083
 #define MAX_SPEED_KMPH 7
 #define MIN_SPEED_RADPS 0.0
-#define MAX_SPEED_RADPS 3.14159 * (MAX_SPEED_KMPH / 3.6) / WHEEL_DIAMETER_M
+#define MAX_SPEED_RADPS 2 * (MAX_SPEED_KMPH / 3.6) / (WHEEL_DIAMETER_M)
 #define MIN_PPM_DURATION 1080.0
 #define MAX_PPM_DURATION 1860.0
 #define SAFETY_MAX_PPM_DURATION 3000.0
@@ -84,10 +84,10 @@ void setup()
   //motor.controller =  MotionControlType::angle;
 
   motor.voltage_limit = 4; // [V]
-  motor.PID_velocity.P = 0.3;
-  motor.PID_velocity.I = 2; // 1.5;
+  motor.PID_velocity.P = 0.6;
+  motor.PID_velocity.I = 5; // 1.5;
   motor.LPF_velocity.Tf = 0.1;
-  motor.PID_velocity.output_ramp = 30;
+  motor.PID_velocity.output_ramp = 100;
   motor.P_angle.P = 2;
 
   // Coeffs pour TorqueControlType::foc_current
@@ -164,14 +164,14 @@ void loop()
 
   // function intended to be used with serial plotter to monitor motor variables
   // significantly slowing the execution down!!!!
-*/ /*
+*/
    if (micros() - last_time > 1000)
    {
      last_time = micros();
       motor.monitor();
 
 
-   }*/
+   }
 
   // Watchdog sur la commande
   uint32_t micr = micros();
