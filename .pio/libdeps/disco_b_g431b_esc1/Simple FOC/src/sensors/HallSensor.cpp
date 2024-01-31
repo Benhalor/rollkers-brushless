@@ -45,6 +45,7 @@ void HallSensor::updateState() {
   long new_pulse_timestamp = _micros();
 
   int8_t new_hall_state = C_active + (B_active << 1) + (A_active << 2);
+  int8_t old_hall_state = hall_state;
 
   // glitch avoidance #1 - sometimes we get an interrupt but pins haven't changed
   if (new_hall_state == hall_state) {
@@ -72,6 +73,9 @@ void HallSensor::updateState() {
     pulse_diff = new_pulse_timestamp - pulse_timestamp;
   } else {
     pulse_diff = 0;
+    /*Serial.println(old_hall_state, BIN);
+    Serial.println(new_hall_state, BIN);
+    Serial.println();*/
   }
 
   pulse_timestamp = new_pulse_timestamp;
@@ -123,16 +127,18 @@ float HallSensor::getVelocity(){
   noInterrupts();
   long last_pulse_timestamp = pulse_timestamp;
   long last_pulse_diff = pulse_diff;
+  long actual_pulse_diff = _micros() - last_pulse_timestamp;
   interrupts();
-  if (last_pulse_diff == 0 || ((long)(_micros() - last_pulse_timestamp) > last_pulse_diff*2) ) { // last velocity isn't accurate if too old
+  //Serial.println(last_pulse_diff);
+  if (last_pulse_diff == 0 || ((long)(actual_pulse_diff) > last_pulse_diff*2) ) { // last velocity isn't accurate if too old
     return 0;
   } else {
-    return direction * (_2PI / (float)cpr) / (last_pulse_diff / 1000000.0f);
+    return direction * (_2PI / (float)cpr) / (max(last_pulse_diff, actual_pulse_diff) / 1000000.0f);
   }
 
 }
 
-// HallSensor initialisation of the hardware pins 
+// HallSensor initialisation of the hardware pins
 // and calculation variables
 void HallSensor::init(){
   // initialise the electrical rotations to 0

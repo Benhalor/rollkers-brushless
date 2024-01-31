@@ -7,9 +7,9 @@
 #define NUMBER_OF_PAIR_POLES 10
 
 #define WHEEL_DIAMETER_M 0.083
-#define MAX_SPEED_KMPH 7
+#define MAX_SPEED_KMPH 2
 #define MIN_SPEED_RADPS 0.0
-#define MAX_SPEED_RADPS 2.0// 2 * (MAX_SPEED_KMPH / 3.6) / (WHEEL_DIAMETER_M)
+#define MAX_SPEED_RADPS  2 * (MAX_SPEED_KMPH / 3.6) / (WHEEL_DIAMETER_M)
 #define MIN_PPM_DURATION 1080.0
 #define MAX_PPM_DURATION 1860.0
 #define SAFETY_MAX_PPM_DURATION 3000.0
@@ -80,7 +80,7 @@ void setup()
   // set motion control loop to be used
   // motor.torque_controller = TorqueControlType::foc_current;
 
-  motor.controller = MotionControlType::torque;
+  motor.controller = MotionControlType::velocity;
   motor.torque_controller = TorqueControlType::foc_current;
   motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
 
@@ -88,7 +88,7 @@ void setup()
   motor.PID_current_q.I = 300;                    // 300  - Arduino UNO/MEGA
   motor.PID_current_q.D = 0;
   motor.PID_current_q.limit = 5;
-  motor.PID_current_q.output_ramp = 0.0;
+  //motor.PID_current_q.output_ramp = 0.05;
   motor.LPF_current_q.Tf = 0.005;
 
   motor.PID_current_d.P = 3;                       // 3    - Arduino UNO/MEGA
@@ -102,10 +102,11 @@ void setup()
   // motor.controller =  MotionControlType::angle;
 
   motor.voltage_limit = 5; // [V]
-  motor.PID_velocity.P = 0.6;//1.0
-  motor.PID_velocity.I = 5; // 10
-  motor.LPF_velocity.Tf = 0.2;
-  motor.PID_velocity.output_ramp = 100;
+  motor.PID_velocity.P = 1.5;//1.0
+  motor.PID_velocity.I = 0.5; // 10
+  motor.PID_velocity.limit = 8; // 10
+  motor.LPF_velocity.Tf = 0.05;
+  motor.PID_velocity.output_ramp = 100.1;
   // motor.P_angle.P = 2;
 
   // Coeffs pour TorqueControlType::foc_current
@@ -127,11 +128,11 @@ void setup()
 
   //  comment out if not needed
   motor.useMonitoring(Serial);
-  motor.monitor_variables = _MON_TARGET | _MON_CURR_Q; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
+  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
 
   motor.sensor_direction = Direction::CW; // CW or CCW
 
-  // motor.motion_downsample = 10; // - times (default 0 - disabled)
+  motor.motion_downsample = 10; // - times (default 0 - disabled)
 
   // initialize motor
   //motor.current_limit = 2;
@@ -191,7 +192,7 @@ Serial.println(current.c); // 0 if only two currents mode
   {
     last_time = micros();
     //Serial.println(durationPpm);
-     //motor.monitor();
+     motor.monitor();
     // PhaseCurrent_s  current = currentSense.getPhaseCurrents();
     /*maxCurrent = max(current.a, maxCurrent);
     maxCurrent = max(current.b, maxCurrent);
@@ -229,8 +230,9 @@ Serial.println(current.c); // 0 if only two currents mode
     speedRadianParSeconde = ((float)durationPpm - MIN_PPM_DURATION) * (MAX_SPEED_RADPS - MIN_SPEED_RADPS) / (MAX_PPM_DURATION - MIN_PPM_DURATION);
   }
 
+  //float shaft_velocity = motor.shaftVelocity();
+  //Serial.println(shaft_velocity);
   float shaft_velocity = motor.shaftVelocity();
-  Serial.println(shaft_velocity);
 
   motor.move(speedRadianParSeconde);
 }
