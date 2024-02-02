@@ -67,6 +67,7 @@ void HallSensor::updateState() {
   electric_sector = new_electric_sector;
 
   // glitch avoidance #2 changes in direction can cause velocity spikes.  Possible improvements needed in this area
+  previous_pulse_diff = pulse_diff;
   if (direction == old_direction) {
     // not oscilating or just changed direction
     pulse_diff = new_pulse_timestamp - pulse_timestamp;
@@ -144,8 +145,25 @@ float HallSensor::getVelocity(){
   } else {
     return direction * (_2PI / (float)cpr) / (last_pulse_diff / 1000000.0f);
   }
-
 }
+
+float HallSensor::getVelocitySmooth(){
+  noInterrupts();
+  long last_pulse_timestamp = pulse_timestamp;
+  long last_pulse_diff = pulse_diff;
+  long last_last_pulse_diff = previous_pulse_diff;
+  long actual_pulse_diff = _micros()-last_pulse_timestamp;
+  interrupts();
+  if (last_pulse_diff == 0 || ((long)(actual_pulse_diff) > last_pulse_diff*2) ) { // last velocity isn't accurate if too old
+    return 0;
+  }
+  float acceleration = ( direction * (_2PI / (float)cpr) / (last_pulse_diff-last_last_pulse_diff ));
+  acceleration = _constrain(acceleration, -500, 500);//todo limit ?
+  //Serial.println(acceleration, 6);
+  return getVelocity()+ (actual_pulse_diff*acceleration)/(last_pulse_diff)/1000000.0f;
+}
+
+
 
 // HallSensor initialisation of the hardware pins
 // and calculation variables

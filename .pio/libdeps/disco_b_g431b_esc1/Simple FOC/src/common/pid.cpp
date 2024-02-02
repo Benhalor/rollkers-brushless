@@ -9,12 +9,19 @@ PIDController::PIDController(float P, float I, float D, float ramp, float limit)
     , error_prev(0.0f)
     , output_prev(0.0f)
     , integral_prev(0.0f)
+    , positive_softener(1.0f)
+    , negative_softener(1.0f)
 {
     timestamp_prev = _micros();
 }
 
 // PID controller function
 float PIDController::operator() (float error){
+    if(error> 0){
+        error = error*positive_softener;
+    } else if(error<0){
+        error = error*negative_softener;
+    }
     // calculate the time from the last call
     unsigned long timestamp_now = _micros();
     float Ts = (timestamp_now - timestamp_prev) * 1e-6f;

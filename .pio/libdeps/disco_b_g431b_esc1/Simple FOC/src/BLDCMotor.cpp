@@ -440,6 +440,7 @@ void BLDCMotor::move(float new_target) {
       // velocity set point - sensor precision: this calculation is numerically precise.
       shaft_velocity_sp = target;
       // calculate the torque command
+
       current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if current/foc_current torque control
       // if torque controlled through voltage control
       if(torque_controller == TorqueControlType::voltage){

@@ -6,7 +6,7 @@
  */
 FOCMotor::FOCMotor()
 {
-  // maximum angular velocity to be used for positioning 
+  // maximum angular velocity to be used for positioning
   velocity_limit = DEF_VEL_LIM;
   // maximum voltage to be set to the motor
   voltage_limit = DEF_POWER_SUPPLY;
@@ -30,15 +30,15 @@ FOCMotor::FOCMotor()
   current.q = 0;
   current.d = 0;
 
-  // voltage bemf 
+  // voltage bemf
   voltage_bemf = 0;
-  
-  //monitor_port 
+
+  //monitor_port
   monitor_port = nullptr;
-  //sensor 
+  //sensor
   sensor_offset = 0.0f;
   sensor = nullptr;
-  //current sensor 
+  //current sensor
   current_sense = nullptr;
 }
 
@@ -70,6 +70,13 @@ float FOCMotor::shaftVelocity() {
   return sensor_direction*LPF_velocity(sensor->getVelocity());
 }
 
+// shaft velocity calculation
+float FOCMotor::shaftVelocitySmooth() {
+  // if no sensor linked return previous value ( for open loop )
+  if(!sensor) return shaft_velocity;
+  return sensor_direction*LPF_velocity(sensor->getVelocitySmooth());
+}
+
 float FOCMotor::electricalAngle(){
   // if no sensor linked return previous value ( for open loop )
   if(!sensor) return electrical_angle;
@@ -98,7 +105,7 @@ void FOCMotor::monitor() {
 
   if(monitor_variables & _MON_TARGET){
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
-    monitor_port->print(target,monitor_decimals);    
+    monitor_port->print(target,monitor_decimals);
     printed= true;
   }
   if(monitor_variables & _MON_VOLT_Q) {
@@ -134,7 +141,7 @@ void FOCMotor::monitor() {
       printed= true;
     }
   }
- 
+
   if(monitor_variables & _MON_VEL) {
     if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
     else if(printed) monitor_port->print(monitor_separator);
@@ -151,5 +158,5 @@ void FOCMotor::monitor() {
     if(monitor_end_char) monitor_port->println(monitor_end_char);
     else monitor_port->println("");
   }
-}   
+}
 
