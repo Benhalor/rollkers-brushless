@@ -33,6 +33,7 @@ void doC() { sensor.handleC(); }
 uint32_t durationPpm = 0;
 uint32_t lastPpmRising = micros();
 float targetSpeedRadianParSeconde = 0.0;
+float targetAngle = 0.0;
 
 enum Step
 {
@@ -103,7 +104,7 @@ void setup()
   motor.PID_current_q.P = 3.0;   // 3    - Arduino UNO/MEGA
   motor.PID_current_q.I = 300.0; // 300  - Arduino UNO/MEGA
   motor.PID_current_q.D = 0.0;
-  motor.PID_current_q.limit = 7.0; // sortie du pid en courant en V
+  motor.PID_current_q.limit = 6.0; // sortie du pid en courant en V
   // motor.PID_current_q.output_ramp = 0.05;
   motor.LPF_current_q.Tf = 0.005;
 
@@ -116,22 +117,21 @@ void setup()
   // Ziegler nichols
   // Ku = 0.25
   // Tu = 54ms
-  //0.13*Ku/Tu
+  // 0.13*Ku/Tu
   motor.voltage_limit = 8.5;     // [V]
   motor.PID_velocity.P = 0.11;   // 1.0
   motor.PID_velocity.I = 0.61;   // 10
-  motor.PID_velocity.limit = 10; // 10 // à refaire après initFoc() aussi
+  motor.PID_velocity.limit = 15; // 10 // à refaire après initFoc() aussi
   motor.LPF_velocity.Tf = 0.05;
   motor.PID_velocity.output_ramp = 100.1;
 
-
   //  comment out if not needed
   motor.useMonitoring(Serial);
-  motor.monitor_variables = _MON_TARGET | _MON_VEL; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
+  motor.monitor_variables = _MON_TARGET | _MON_ANGLE; // default _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE | _MON_CURR_Q
 
   motor.sensor_direction = Direction::CW; // CW or CCW
 
-  motor.motion_downsample = 20; // - times (default 0 - disabled)
+  //motor.motion_downsample = 10; // - times (default 0 - disabled)
 
   // initialize motor
   // motor.current_limit = 2;
@@ -147,7 +147,7 @@ void setup()
 
   // align encoder and start FOC
   motor.initFOC();
-  motor.PID_velocity.limit = 22;
+  motor.PID_velocity.limit = 15;
 
   command.add('T', doTarget, "target angle");
 
@@ -162,6 +162,7 @@ void setup()
     delay(1);
   }
   msmstep = STOPPED;
+  targetAngle = sensor.getSensorAngle();
   motor.monitor_downsample = 1;
 }
 
@@ -179,12 +180,12 @@ void loop()
     maxCurrent = max(current.c, maxCurrent);
     Serial.println(maxCurrent);*/
     last_time = micros();
-    //sensor.getVelocitySmooth();
-     motor.monitor();
-   /* Serial.print(sensor.getVelocitySmooth());
-    Serial.print(",");
-    Serial.print(sensor.getVelocity());
-    Serial.println();*/
+    // sensor.getVelocitySmooth();
+    motor.monitor();
+    /* Serial.print(sensor.getVelocitySmooth());
+     Serial.print(",");
+     Serial.print(sensor.getVelocity());
+     Serial.println();*/
   }
 
   // Watchdog sur la commande
@@ -194,6 +195,7 @@ void loop()
   {
     targetSpeedRadianParSeconde = 0.0;
     msmstep = STOPPED;
+    targetAngle = sensor.getSensorAngle();
   }
 
   // Calcul de la vitesse
@@ -216,27 +218,48 @@ void loop()
 
   motor.loopFOC();
   float measuredSpeedRadianParSeconde = sensor.getVelocity();
+
   if (msmstep == STOPPED)
   {
+    // Ku 0.2
+    // Tu 71ms
+    motor.controller = MotionControlType::velocity;
+    //motor.torque_controller = TorqueControlType::voltage;
+    // voltage Ku = 1.2, tu = 54ms
     motor.PID_velocity.P = 0.11;   // 1.0
     motor.PID_velocity.I = 0.61;   // 10
-    motor.PID_velocity.limit = 22; // 10
+    //motor.PID_velocity.D = 0.04;
+    motor.PID_velocity.limit = 15; // 10
     motor.LPF_velocity.Tf = 0.05;
     motor.PID_velocity.output_ramp = 200.1;
-    motor.PID_velocity.negative_softener = 1.0;
+    //motor.PID_velocity.negative_softener = 1.0;
+
+    /*if (abs(targetAngle - sensor.getSensorAngle()) < 0.1)
+    {
+      motor.P_angle.P = 0.0;
+      motor.P_angle.I = 0.0;
+    }
+    else
+    {
+      motor.P_angle.P = 20;
+      motor.P_angle.I = 5.0;
+    }*/
     motor.move(0.0);
     if (abs(targetSpeedRadianParSeconde) > ZERO_SPEED_RADPS)
     {
       msmstep = STARTING;
+      //
     }
   }
   else if (msmstep == STARTING)
   {
     // ku = 0.05
     // Tu = 120
+    motor.controller = MotionControlType::velocity;
+    //motor.torque_controller = TorqueControlType::foc_current;
     motor.PID_velocity.P = 0.11;   // 1.0
     motor.PID_velocity.I = 0.61;   // 10
-    motor.PID_velocity.limit = 22; // 10
+    motor.PID_velocity.limit = 15; // 10
     motor.LPF_velocity.Tf = 0.05;
     motor.PID_velocity.output_ramp = 100.1;
     motor.PID_velocity.negative_softener = 1.0;
@@ -248,13 +271,14 @@ void loop()
     else if (abs(targetSpeedRadianParSeconde) < ZERO_SPEED_RADPS && abs(measuredSpeedRadianParSeconde) < ZERO_SPEED_RADPS)
     {
       msmstep == STOPPED;
+      targetAngle = sensor.getSensorAngle();
     }
   }
   else if (msmstep == PERMANENT_SPEED)
   {
     motor.PID_velocity.P = 0.11;   // 1.0
     motor.PID_velocity.I = 0.61;   // 10
-    motor.PID_velocity.limit = 22; // 10
+    motor.PID_velocity.limit = 15; // 10
     motor.LPF_velocity.Tf = 0.05;
     motor.PID_velocity.output_ramp = 100.1;
     motor.PID_velocity.negative_softener = 1.0;

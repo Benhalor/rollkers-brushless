@@ -124,10 +124,11 @@ float HallSensor::getSensorAngle() {
   long last_pulse_timestamp = pulse_timestamp;
   long last_pulse_diff = pulse_diff;
   long actual_pulse_diff = _micros()-last_pulse_timestamp;
-  if((long)(actual_pulse_diff) > last_pulse_diff*2){
+  float velocity =  getVelocity();
+  if((long)(actual_pulse_diff) > last_pulse_diff*2 || abs(velocity)<2){
     return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI;
   } else {
-    return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI + getVelocity()*(actual_pulse_diff / 1000000.0f);
+    return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI + velocity*(actual_pulse_diff / 1000000.0f);
   }
 }
 
