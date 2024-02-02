@@ -31,7 +31,7 @@
 #define DEF_CURRENT_LIM 2.0f //!< 2Amps current limit by default
 
 // default monitor downsample
-#define DEF_MON_DOWNSMAPLE 1 //!< default monitor downsample
+#define DEF_MON_DOWNSMAPLE 100 //!< default monitor downsample
 #define DEF_MOTION_DOWNSMAPLE 0 //!< default motion downsample - disable
 
 // angle P params
@@ -46,4 +46,4 @@
 #define DEF_VEL_FILTER_Tf 0.005 //!< default velocity filter time constant
 
 // current sense default parameters
-#define DEF_LPF_PER_PHASE_CURRENT_SENSE_Tf 0.0f  //!< default currnet sense per phase low pass filter time constant
+#define DEF_LPF_PER_PHASE_CURRENT_SENSE_Tf 0.0f  //!< default currnet sense per phase low pass filter time constant 
