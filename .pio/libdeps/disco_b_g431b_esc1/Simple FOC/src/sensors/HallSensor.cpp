@@ -67,7 +67,6 @@ void HallSensor::updateState() {
   electric_sector = new_electric_sector;
 
   // glitch avoidance #2 changes in direction can cause velocity spikes.  Possible improvements needed in this area
-  previous_pulse_diff = pulse_diff;
   if (direction == old_direction) {
     // not oscilating or just changed direction
     pulse_diff = new_pulse_timestamp - pulse_timestamp;
@@ -102,15 +101,7 @@ void HallSensor::update() {
   long last_electric_rotations = electric_rotations;
   int8_t last_electric_sector = electric_sector;
   interrupts();
-
-  long last_pulse_timestamp = pulse_timestamp;
-  long last_pulse_diff = pulse_diff;
-  long actual_pulse_diff = _micros()-last_pulse_timestamp;
-  if((long)(actual_pulse_diff) > last_pulse_diff*2){
-    angle_prev = ((float)((last_electric_rotations * 6 + last_electric_sector) % cpr) / (float)cpr) * _2PI ;
-  } else {
-    angle_prev = ((float)((last_electric_rotations * 6 + last_electric_sector) % cpr) / (float)cpr) * _2PI + getVelocity()*(actual_pulse_diff / 1000000.0f);
-  }
+  angle_prev = ((float)((last_electric_rotations * 6 + last_electric_sector) % cpr) / (float)cpr) * _2PI ;
   full_rotations = (int32_t)((last_electric_rotations * 6 + last_electric_sector) / cpr);
 }
 
@@ -121,15 +112,7 @@ void HallSensor::update() {
   TODO: numerical precision issue here if the electrical rotation overflows the angle will be lost
 */
 float HallSensor::getSensorAngle() {
-  long last_pulse_timestamp = pulse_timestamp;
-  long last_pulse_diff = pulse_diff;
-  long actual_pulse_diff = _micros()-last_pulse_timestamp;
-  float velocity =  getVelocity();
-  if((long)(actual_pulse_diff) > last_pulse_diff*2 || abs(velocity)<2){
-    return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI;
-  } else {
-    return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI + velocity*(actual_pulse_diff / 1000000.0f);
-  }
+  return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI ;
 }
 
 /*
@@ -146,27 +129,10 @@ float HallSensor::getVelocity(){
   } else {
     return direction * (_2PI / (float)cpr) / (last_pulse_diff / 1000000.0f);
   }
+
 }
 
-float HallSensor::getVelocitySmooth(){
-  noInterrupts();
-  long last_pulse_timestamp = pulse_timestamp;
-  long last_pulse_diff = pulse_diff;
-  long last_last_pulse_diff = previous_pulse_diff;
-  long actual_pulse_diff = _micros()-last_pulse_timestamp;
-  interrupts();
-  if (last_pulse_diff == 0 || ((long)(actual_pulse_diff) > last_pulse_diff*2) ) { // last velocity isn't accurate if too old
-    return 0;
-  }
-  float acceleration = ( direction * (_2PI / (float)cpr) / (last_pulse_diff-last_last_pulse_diff ));
-  acceleration = _constrain(acceleration, -500, 500);//todo limit ?
-  //Serial.println(acceleration, 6);
-  return getVelocity()+ (actual_pulse_diff*acceleration)/(last_pulse_diff)/1000000.0f;
-}
-
-
-
-// HallSensor initialisation of the hardware pins
+// HallSensor initialisation of the hardware pins 
 // and calculation variables
 void HallSensor::init(){
   // initialise the electrical rotations to 0

@@ -351,10 +351,20 @@ void BLDCMotor::loopFOC() {
       current = current_sense->getFOCCurrents(electrical_angle);
       // filter values
       current.q = LPF_current_q(current.q);
+
       current.d = LPF_current_d(current.d);
       // calculate the phase voltages
       voltage.q = PID_current_q(current_sp - current.q);
+      /*if(abs(current_sp - current.q) < 0.2 && abs(PID_current_q.output_prev) < 0.2){
+        //Serial.println("disable current");
+        voltage.q = 0.0;
+      } else {
+        //Serial.println("not disable current");
+      }*/
       voltage.d = PID_current_d(-current.d);
+      /* if(abs(-current.d) < 0.2 && abs(PID_current_d.output_prev) < 0.2){
+        voltage.d = 0.0;
+      }*/
       // d voltage - lag compensation - TODO verify
       // if(_isset(phase_inductance)) voltage.d = _constrain( voltage.d - current_sp*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
       break;
@@ -387,7 +397,6 @@ void BLDCMotor::move(float new_target) {
   //                        when switching to a 2-component representation.
   if( controller!=MotionControlType::angle_openloop && controller!=MotionControlType::velocity_openloop )
     shaft_angle = shaftAngle(); // read value even if motor is disabled to keep the monitoring updated but not in openloop mode
-    //Serial.println(shaft_angle);
   // get angular velocity  TODO the velocity reading probably also shouldn't happen in open loop modes?
   shaft_velocity = shaftVelocity(); // read value even if motor is disabled to keep the monitoring updated
 
@@ -422,10 +431,13 @@ void BLDCMotor::move(float new_target) {
       // angle set point
       shaft_angle_sp = target;
       // calculate velocity set point
-      shaft_velocity_sp = feed_forward_velocity + P_angle( shaft_angle_sp - shaft_angle );
-      shaft_velocity_sp = _constrain(shaft_velocity_sp,-velocity_limit, velocity_limit);
+      current_sp = P_angle( shaft_angle_sp - shaft_angle );
+      /*if(abs(shaft_angle_sp - shaft_angle) < 0.1 && abs(P_angle.output_prev) < 0.1){
+        current_sp = 0.0;
+      }*/
+      //shaft_velocity_sp = _constrain(shaft_velocity_sp,-velocity_limit, velocity_limit);
       // calculate the torque command - sensor precision: this calculation is ok, but based on bad value from previous calculation
-      current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if voltage torque control
+      //current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if voltage torque control
       // if torque controlled through voltage
       if(torque_controller == TorqueControlType::voltage){
         // use voltage if phase-resistance not provided
@@ -440,7 +452,6 @@ void BLDCMotor::move(float new_target) {
       // velocity set point - sensor precision: this calculation is numerically precise.
       shaft_velocity_sp = target;
       // calculate the torque command
-
       current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if current/foc_current torque control
       // if torque controlled through voltage control
       if(torque_controller == TorqueControlType::voltage){
@@ -478,6 +489,7 @@ void BLDCMotor::move(float new_target) {
 // regular sin + cos ~300us    (no memory usage)
 // approx  _sin + _cos ~110us  (400Byte ~ 20% of memory)
 void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
+
   float center;
   int sector;
   float _ca,_sa;
@@ -550,7 +562,6 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
       // Sinusoidal PWM modulation
       // Inverse Park + Clarke transformation
       _sincos(angle_el, &_sa, &_ca);
-      //Serial.println(angle_el);
 
       // Inverse park transform
       Ualpha =  _ca * Ud - _sa * Uq;  // -sin(angle) * Uq;

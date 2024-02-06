@@ -70,13 +70,6 @@ float FOCMotor::shaftVelocity() {
   return sensor_direction*LPF_velocity(sensor->getVelocity());
 }
 
-// shaft velocity calculation
-float FOCMotor::shaftVelocitySmooth() {
-  // if no sensor linked return previous value ( for open loop )
-  if(!sensor) return shaft_velocity;
-  return sensor_direction*LPF_velocity(sensor->getVelocitySmooth());
-}
-
 float FOCMotor::electricalAngle(){
   // if no sensor linked return previous value ( for open loop )
   if(!sensor) return electrical_angle;
@@ -131,13 +124,13 @@ void FOCMotor::monitor() {
     if(monitor_variables & _MON_CURR_Q) {
       if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
       else if(printed) monitor_port->print(monitor_separator);
-      monitor_port->print(c.q*1000, monitor_decimals); // mAmps
+      monitor_port->print(c.q, monitor_decimals); // mAmps
       printed= true;
     }
     if(monitor_variables & _MON_CURR_D) {
       if(!printed && monitor_start_char) monitor_port->print(monitor_start_char);
       else if(printed) monitor_port->print(monitor_separator);
-      monitor_port->print(c.d*1000, monitor_decimals); // mAmps
+      monitor_port->print(c.d, monitor_decimals); // mAmps
       printed= true;
     }
   }
