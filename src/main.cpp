@@ -109,7 +109,7 @@ void setup()
   motor.PID_current_q.P = 8.0;   // 3    - Arduino UNO/MEGA
   motor.PID_current_q.I = 150.0; // 300  - Arduino UNO/MEGA
   motor.PID_current_q.D = 0.0;
-  motor.PID_current_q.limit = 5.0; // sortie du pid en courant en V
+  motor.PID_current_q.limit = 8.0; // sortie du pid en courant en V
   // motor.PID_current_q.output_ramp = 0.05;
   motor.LPF_current_q.Tf = 0.005;
 
@@ -152,7 +152,7 @@ void setup()
 
   // align encoder and start FOC
   motor.initFOC();
-  motor.PID_velocity.limit = 15;
+  //motor.PID_velocity.limit = 15;
 
   command.add('T', doTarget, "target angle");
 
@@ -179,7 +179,7 @@ void loop()
 {
   encoder.update();
 
-  if (micros() - last_time > 1000 && abs(targetSpeedRadianParSeconde) > 0.1)
+  if (micros() - last_time > 1000 /*&& abs(targetSpeedRadianParSeconde) > 0.1*/)
   {
 
     // Serial.println(durationPpm);
@@ -199,7 +199,7 @@ void loop()
     Serial.println();*/
     // sensor.getVelocitySmooth();
 
-    // Serial.print(_normalizeAngle(encoder.getSensorAngle()));
+    // Serial.println(_normalizeAngle(encoder.getSensorAngle()));
     // Serial.println(encoder.getVelocity());;
     // Serial.println();
     motor.monitor();
@@ -245,9 +245,9 @@ void loop()
   // Tu = 85ms
   motor.controller = MotionControlType::angle;
   motor.P_angle.P = 3.0;
-  motor.P_angle.I = 10.0;
+  motor.P_angle.I = 0.0;
   motor.P_angle.D = 0.0;
-  motor.P_angle.limit = 12;
+  motor.P_angle.limit = 20;
   motor.P_angle.output_ramp = 199.1;
   motor.LPF_angle.Tf = 0.005;
   // command.run();
