@@ -20,7 +20,7 @@
 BLDCMotor motor = BLDCMotor(NUMBER_OF_PAIR_POLES, 0.39, 80, 0.00018); // 0.39, 65, 0.00018
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
 LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f / 7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
-
+LowPassFilter LPF_target{0.05};
 // encoder instance
 // HallSensor sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, NUMBER_OF_PAIR_POLES);
 Encoder encoder = Encoder(A_HALL1, A_HALL2, 1000, A_HALL3);
@@ -271,7 +271,7 @@ void loop()
     {
       if (dt < 1000 && abs(measuredAngle-targetAngle)<4*PI)
       {
-        targetAngle -= (float)dt*(1e-6f) * targetSpeedRadianParSeconde;
+        targetAngle -= (float)dt*(1e-6f) * LPF_target(targetSpeedRadianParSeconde);
       }
       last_time_speed = micr;
     }
